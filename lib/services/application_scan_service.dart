@@ -15,6 +15,7 @@ class ExtractedApplication {
     required this.startTime,
     required this.endTime,
     required this.hallSpaceName,
+    required this.hallSection,
     required this.selectedServices,
     required this.notes,
     required this.confidence,
@@ -30,6 +31,7 @@ class ExtractedApplication {
   final String startTime;
   final String endTime;
   final String hallSpaceName;
+  final String hallSection;
   final List<String> selectedServices;
   final String notes;
   final Map<String, dynamic> confidence;
@@ -48,6 +50,7 @@ class ExtractedApplication {
       startTime: map['start_time']?.toString() ?? '',
       endTime: map['end_time']?.toString() ?? '',
       hallSpaceName: map['hall_space_name']?.toString() ?? '',
+      hallSection: map['hall_section']?.toString() ?? '',
       selectedServices: (map['selected_services'] as List<dynamic>? ?? const [])
           .map((e) => e.toString())
           .toList(),

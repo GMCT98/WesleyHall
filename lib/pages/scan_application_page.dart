@@ -441,7 +441,7 @@ class _ScanApplicationPageState extends State<ScanApplicationPage> {
                                             ),
                                             Expanded(
                                               child: Text(
-                                                '${service.name} - \${service.price.toStringAsFixed(2)}${service.pricingType == 'hourly' ? '/hr' : service.pricingType == 'per_unit' ? '/each' : ''}',
+                                                '${service.name} - \$${service.price.toStringAsFixed(2)}${service.pricingType == 'hourly' ? '/hr' : service.pricingType == 'per_unit' ? '/each' : ''}',
                                               ),
                                             ),
                                             if (checked &&

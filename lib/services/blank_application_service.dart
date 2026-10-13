@@ -103,12 +103,38 @@ class BlankApplicationService {
           _section('HALL SPACE - CHECK ONE'),
           ...settings.spaces.where((s) => s.active).map(
                 (space) => _checkLine(
-                  space.name,
+                  space.id == 'full-hall'
+                      ? space.name + ' (Capacity 278)'
+                      : space.id == 'half-hall'
+                          ? space.name + ' (choose one section below)'
+                          : space.capacity == null
+                              ? space.name
+                              : space.name +
+                                  ' (Capacity ' +
+                                  space.capacity.toString() +
+                                  ')',
                   space.baseRate > 0
                       ? '\$${space.baseRate.toStringAsFixed(2)}'
                       : 'Rate to be confirmed',
                 ),
               ),
+          if (settings.spaces
+              .any((space) => space.active && space.id == 'half-hall')) ...[
+            pw.SizedBox(height: 4),
+            pw.Text(
+              'If Half Hall is selected, check ONE section:',
+              style: pw.TextStyle(
+                fontSize: 9,
+                fontWeight: pw.FontWeight.bold,
+              ),
+            ),
+            _checkLine('Southwest Section (Capacity 161)', ''),
+            _checkLine('Southeast Section (Capacity 117)', ''),
+            pw.Text(
+              'Only one renter may use Wesley Hall at a time. A Half Hall rental still blocks the entire hall.',
+              style: const pw.TextStyle(fontSize: 8.5),
+            ),
+          ],
           pw.SizedBox(height: 10),
           _section('OPTIONAL FACILITIES / SERVICES - CHECK ALL REQUIRED'),
           ...settings.services.where((s) => s.active).map(

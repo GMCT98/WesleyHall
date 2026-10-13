@@ -101,7 +101,7 @@ class _CommunicationCenterPageState extends State<CommunicationCenterPage> {
     final org = s.organization;
     final name = b.clientName.trim().isEmpty ? b.churchGroup : b.clientName;
     final greetingName = name.trim().isEmpty ? 'Client' : name.trim();
-    final hall = b.hallSpaceName;
+    final hall = b.hallDisplayName;
     final eventDate = _date(b.eventDate);
     final eventTime = '${_time(b.eventStart)} - ${_time(b.eventEnd)}';
     final accessTime = _time(b.accessStart);
@@ -313,7 +313,7 @@ class _CommunicationCenterPageState extends State<CommunicationCenterPage> {
                                           ?.copyWith(fontWeight: FontWeight.w800),
                                     ),
                                     const SizedBox(height: 3),
-                                    Text('${b.eventDetails} • ${_date(b.eventDate)} • ${b.hallSpaceName}'),
+                                    Text('${b.eventDetails} • ${_date(b.eventDate)} • ${b.hallDisplayName}'),
                                     Text('Booking reference: ${b.referenceNumber}'),
                                   ],
                                 ),

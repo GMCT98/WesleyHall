@@ -446,7 +446,7 @@ class DashboardPage extends StatelessWidget {
                     runSpacing: 6,
                     children: [
                       _mini(Icons.person_outline, b.clientName),
-                      _mini(Icons.meeting_room_outlined, b.hallSpaceName),
+                      _mini(Icons.meeting_room_outlined, b.hallDisplayName),
                     ],
                   ),
                   const Divider(height: 18),

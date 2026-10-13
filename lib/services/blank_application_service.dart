@@ -114,10 +114,14 @@ class BlankApplicationService {
           ...settings.services.where((s) => s.active).map(
                 (service) => _checkLine(
                   service.name,
-                  '\$${service.price.toStringAsFixed(2)}${service.pricingType == 'hourly' ? ' / hr' : ''}',
+                  service.price > 0
+                      ? '\${service.price.toStringAsFixed(2)}${service.pricingType == 'hourly' ? ' / hr' : service.pricingType == 'per_unit' ? ' / each' : ''}'
+                      : 'Rate to be confirmed',
                   trailingBlank: service.pricingType == 'hourly'
                       ? 'Hours: ________'
-                      : null,
+                      : service.pricingType == 'per_unit'
+                          ? 'Qty: ________'
+                          : null,
                 ),
               ),
           pw.SizedBox(height: 10),

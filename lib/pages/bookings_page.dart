@@ -707,7 +707,7 @@ class _BookingsPageState extends State<BookingsPage> {
             ),
           ),
         ),
-        DataCell(Text(booking.hallSpaceName)),
+        DataCell(Text(booking.hallDisplayName)),
         DataCell(
           SizedBox(
             width: 170,

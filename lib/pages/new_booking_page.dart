@@ -596,16 +596,16 @@ class _NewBookingPageState extends State<NewBookingPage> {
                                   ),
                                   Expanded(
                                     child: Text(
-                                      '${service.name} - \$${service.price.toStringAsFixed(2)}${service.pricingType == 'hourly' ? '/hr' : ''}',
+                                      '${service.name} - \${service.price.toStringAsFixed(2)}${service.pricingType == 'hourly' ? '/hr' : service.pricingType == 'per_unit' ? '/each' : ''}',
                                     ),
                                   ),
-                                  if (checked && service.pricingType == 'hourly')
+                                  if (checked && (service.pricingType == 'hourly' || service.pricingType == 'per_unit'))
                                     SizedBox(
                                       width: 90,
                                       child: TextFormField(
                                         initialValue: '1',
-                                        decoration: const InputDecoration(
-                                            labelText: 'Hours'),
+                                        decoration: InputDecoration(
+                                            labelText: service.pricingType == 'hourly' ? 'Hours' : 'Qty'),
                                         onChanged: (value) => setState(() =>
                                             selected[service.id] =
                                                 double.tryParse(value) ?? 0.0),

@@ -323,6 +323,11 @@ class Booking {
     return sectionLabel == null ? hallSpaceName : '$hallSpaceName - $sectionLabel';
   }
   int? get hallSectionCapacity => WesleyHallSection.capacity(hallSection);
+  int? get selectedHallCapacity {
+    if (hallSpaceId == 'full-hall') return 278;
+    if (hallSpaceId == 'half-hall') return hallSectionCapacity;
+    return null;
+  }
   bool get isExpiredHold =>
       isHold && holdExpiresAt != null && holdExpiresAt!.isBefore(DateTime.now());
   bool get isRecurring => seriesKey != null && seriesKey!.isNotEmpty;

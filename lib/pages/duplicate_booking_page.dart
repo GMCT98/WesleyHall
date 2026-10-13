@@ -553,17 +553,17 @@ class _DuplicateBookingPageState extends State<DuplicateBookingPage> {
                                     ),
                                     Expanded(
                                       child: Text(
-                                        '${service.name} - \$${service.price.toStringAsFixed(2)}${service.pricingType == 'hourly' ? '/hr' : ''}',
+                                        '${service.name} - \${service.price.toStringAsFixed(2)}${service.pricingType == 'hourly' ? '/hr' : service.pricingType == 'per_unit' ? '/each' : ''}',
                                       ),
                                     ),
-                                    if (checked && service.pricingType == 'hourly')
+                                    if (checked && (service.pricingType == 'hourly' || service.pricingType == 'per_unit'))
                                       SizedBox(
                                         width: 100,
                                         child: TextFormField(
                                           key: ValueKey('${service.id}-${_selectedServices[service.id]}'),
                                           initialValue: (_selectedServices[service.id] ?? 1)
                                               .toStringAsFixed(0),
-                                          decoration: const InputDecoration(labelText: 'Hours'),
+                                          decoration: InputDecoration(labelText: service.pricingType == 'hourly' ? 'Hours' : 'Qty'),
                                           keyboardType: const TextInputType.numberWithOptions(decimal: true),
                                           onChanged: (value) => setState(() {
                                             _selectedServices[service.id] =

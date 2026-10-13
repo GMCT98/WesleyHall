@@ -91,7 +91,9 @@ class ContractService {
             ['Address', booking.clientAddress],
             ['Telephone', booking.phone],
             ['Email', booking.email],
-            ['Hall', booking.hallSpaceName],
+            ['Hall', booking.hallDisplayName],
+            if (booking.selectedHallCapacity != null)
+              ['Hall Capacity', booking.selectedHallCapacity.toString()],
             ['Event', booking.eventDetails],
             ['Guests', booking.guestCount.toString()],
           ]),
@@ -159,7 +161,7 @@ class ContractService {
           if (rules.extraHourRate > 0)
             pw.Bullet(
               text:
-                  'Additional approved rental time is charged at \$${rules.extraHourRate.toStringAsFixed(2)} per hour.',
+                  'Additional rental time is charged at \$${rules.extraHourRate.toStringAsFixed(2)} per additional hour or part thereof.',
               style: const pw.TextStyle(fontSize: 9.5),
             ),
           pw.SizedBox(height: 8),

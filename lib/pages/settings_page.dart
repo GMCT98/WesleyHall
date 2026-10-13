@@ -356,6 +356,7 @@ class _SettingsPageState extends State<SettingsPage> {
                       items: const [
                         DropdownMenuItem(value: 'flat', child: Text('Flat Rate')),
                         DropdownMenuItem(value: 'hourly', child: Text('Per Hour')),
+                        DropdownMenuItem(value: 'per_unit', child: Text('Per Item / Unit')),
                       ],
                       onChanged: (v) => setModal(() => pricing = v ?? pricing),
                     ),
@@ -793,7 +794,13 @@ class _SettingsPageState extends State<SettingsPage> {
           headings: const ['Service Name', 'Pricing Type', 'Price', 'Active', 'Actions'],
           rows: b.services.map((s) => [
             Text(s.name, style: const TextStyle(fontWeight: FontWeight.w600)),
-            Text(s.pricingType == 'hourly' ? 'Per Hour' : 'Flat Rate'),
+            Text(
+              s.pricingType == 'hourly'
+                  ? 'Per Hour'
+                  : s.pricingType == 'per_unit'
+                      ? 'Per Item / Unit'
+                      : 'Flat Rate',
+            ),
             Text('\$${s.price.toStringAsFixed(2)}'),
             Switch(
               value: s.active,

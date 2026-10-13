@@ -317,6 +317,7 @@ class SupabaseWesleyRepository implements WesleyRepository {
         guestCount: (row['guest_count'] as num?)?.toInt() ?? 0,
         hallSpaceId: row['hall_space_id'].toString(),
         hallSpaceName: hall?['name'] as String? ?? 'Hall',
+        hallSection: row['hall_section'] as String?,
         hallCharge: (row['hall_charge'] as num?)?.toDouble() ?? 0,
         extraTimeCharge:
             (row['extra_time_charge'] as num?)?.toDouble() ?? 0,
@@ -435,6 +436,7 @@ class SupabaseWesleyRepository implements WesleyRepository {
         'event_details': booking.eventDetails,
         'guest_count': booking.guestCount,
         'hall_space_id': booking.hallSpaceId,
+        'hall_section': booking.hallSection,
         'hall_charge': booking.hallCharge,
         'extra_time_charge': booking.extraTimeCharge,
         'status': booking.status,

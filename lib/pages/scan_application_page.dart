@@ -39,6 +39,7 @@ class _ScanApplicationPageState extends State<ScanApplicationPage> {
   TimeOfDay? _startTime;
   TimeOfDay? _endTime;
   String? _hallId;
+  String? _hallSection;
   final Set<String> _selectedServiceIds = {};
   final Map<String, double> _selectedServiceQuantities = {};
   Map<String, dynamic> _confidence = const {};
@@ -128,7 +129,15 @@ class _ScanApplicationPageState extends State<ScanApplicationPage> {
                 extracted.hallSpaceName.trim().toLowerCase(),
             orElse: () => null,
           );
-      if (hall != null) _hallId = hall.id;
+      if (hall != null) {
+        _hallId = hall.id;
+        _hallSection = null;
+        if (hall.id == 'half-hall' &&
+            (extracted.hallSection == WesleyHallSection.southwest ||
+                extracted.hallSection == WesleyHallSection.southeast)) {
+          _hallSection = extracted.hallSection;
+        }
+      }
 
       _selectedServiceIds.clear();
       _selectedServiceQuantities.clear();
@@ -185,6 +194,29 @@ class _ScanApplicationPageState extends State<ScanApplicationPage> {
     }
 
     final hall = settings.spaces.firstWhere((s) => s.id == _hallId);
+    if (hall.id == 'half-hall' && _hallSection == null) {
+      setState(() => _error =
+          'Please confirm whether the Half Hall uses the Southwest Section or Southeast Section.');
+      return;
+    }
+
+    final guestCount = int.tryParse(_guests.text.trim()) ?? 0;
+    final capacity = hall.id == 'full-hall'
+        ? 278
+        : hall.id == 'half-hall'
+            ? WesleyHallSection.capacity(_hallSection)
+            : hall.capacity;
+    if (capacity != null && guestCount > capacity) {
+      final label = hall.id == 'half-hall'
+          ? WesleyHallSection.label(_hallSection) ?? 'Half Hall'
+          : hall.name;
+      setState(() => _error = label +
+          ' capacity is ' +
+          capacity.toString() +
+          '. Please correct the guest count or choose the Full Hall.');
+      return;
+    }
+
     final start = _combine(_eventDate!, _startTime!);
     var end = _combine(_eventDate!, _endTime!);
     if (!end.isAfter(start)) end = end.add(const Duration(days: 1));
@@ -241,9 +273,10 @@ class _ScanApplicationPageState extends State<ScanApplicationPage> {
         accessStart: accessStart,
         vacateEnd: vacateEnd,
         eventDetails: _eventName.text.trim(),
-        guestCount: int.tryParse(_guests.text.trim()) ?? 0,
+        guestCount: guestCount,
         hallSpaceId: hall.id,
         hallSpaceName: hall.name,
+        hallSection: hall.id == 'half-hall' ? _hallSection : null,
         hallCharge: hall.baseRate,
         extraTimeCharge: extraTimeCharge,
         status: 'awaiting_deposit',
@@ -404,11 +437,506 @@ class _ScanApplicationPageState extends State<ScanApplicationPage> {
                                     .where((s) => s.active)
                                     .map((s) => DropdownMenuItem(
                                           value: s.id,
-                                          child: Text('${s.name}  •  \$${s.baseRate.toStringAsFixed(2)}'),
+                                          child: Text(
+                                            s.id == 'full-hall'
+                                                ? s.name +
+                                                    ' • Capacity 278 • \
+                              Align(
+                                alignment: Alignment.centerLeft,
+                                child: Text('Services / Facilities',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .titleMedium
+                                        ?.copyWith(fontWeight: FontWeight.w800)),
+                              ),
+                              const SizedBox(height: 6),
+                              ...settings.services.where((s) => s.active).map(
+                                    (service) {
+                                      final checked =
+                                          _selectedServiceIds.contains(service.id);
+                                      return Padding(
+                                        padding: const EdgeInsets.only(bottom: 6),
+                                        child: Row(
+                                          children: [
+                                            Checkbox(
+                                              value: checked,
+                                              onChanged: (value) => setState(() {
+                                                if (value == true) {
+                                                  _selectedServiceIds.add(service.id);
+                                                  _selectedServiceQuantities[service.id] = 1;
+                                                } else {
+                                                  _selectedServiceIds.remove(service.id);
+                                                  _selectedServiceQuantities.remove(service.id);
+                                                }
+                                              }),
+                                            ),
+                                            Expanded(
+                                              child: Text(
+                                                '${service.name} - \$${service.price.toStringAsFixed(2)}${service.pricingType == 'hourly' ? '/hr' : service.pricingType == 'per_unit' ? '/each' : ''}',
+                                              ),
+                                            ),
+                                            if (checked &&
+                                                (service.pricingType == 'hourly' ||
+                                                    service.pricingType == 'per_unit'))
+                                              SizedBox(
+                                                width: 100,
+                                                child: TextFormField(
+                                                  initialValue:
+                                                      (_selectedServiceQuantities[service.id] ?? 1)
+                                                          .toStringAsFixed(0),
+                                                  keyboardType:
+                                                      const TextInputType.numberWithOptions(
+                                                    decimal: true,
+                                                  ),
+                                                  decoration: InputDecoration(
+                                                    labelText:
+                                                        service.pricingType == 'hourly'
+                                                            ? 'Hours'
+                                                            : 'Qty',
+                                                  ),
+                                                  onChanged: (value) => setState(() {
+                                                    _selectedServiceQuantities[service.id] =
+                                                        double.tryParse(value) ?? 0;
+                                                  }),
+                                                ),
+                                              ),
+                                          ],
+                                        ),
+                                      );
+                                    },
+                                  ),
+                              const SizedBox(height: 10),
+                              TextField(
+                                controller: _notes,
+                                maxLines: 3,
+                                decoration: const InputDecoration(labelText: 'Notes'),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: FilledButton.icon(
+                          onPressed: _saving || _scanBytes == null ? null : _save,
+                          icon: const Icon(Icons.event_available_outlined),
+                          label: const Text('Confirm & Add to Planner'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+    );
+  }
+
+  Widget _field(
+      TextEditingController controller, String label, String? confidenceKey) {
+    return TextField(
+      controller: controller,
+      decoration: InputDecoration(
+        labelText: _labelWithConfidence(label, confidenceKey),
+      ),
+    );
+  }
+
+  String _labelWithConfidence(String label, String? key) {
+    if (key == null) return label;
+    final value = _confidence[key];
+    if (value is num && value < .75) return '$label - CHECK';
+    return label;
+  }
+
+  Widget _dateButton() => OutlinedButton.icon(
+        onPressed: () async {
+          final picked = await showDatePicker(
+            context: context,
+            initialDate: _eventDate ?? DateTime.now(),
+            firstDate: DateTime.now().subtract(const Duration(days: 365)),
+            lastDate: DateTime.now().add(const Duration(days: 3650)),
+          );
+          if (picked != null) setState(() => _eventDate = picked);
+        },
+        icon: const Icon(Icons.calendar_today_outlined),
+        label: Text(_eventDate == null
+            ? 'Event Date - CHECK'
+            : '${_eventDate!.month}/${_eventDate!.day}/${_eventDate!.year}'),
+      );
+
+  Widget _timeButton(String label, bool start) => OutlinedButton.icon(
+        onPressed: () async {
+          final current = start ? _startTime : _endTime;
+          final picked = await showTimePicker(
+            context: context,
+            initialTime: current ?? const TimeOfDay(hour: 18, minute: 0),
+          );
+          if (picked != null) {
+            setState(() {
+              if (start) {
+                _startTime = picked;
+              } else {
+                _endTime = picked;
+              }
+            });
+          }
+        },
+        icon: const Icon(Icons.schedule_outlined),
+        label: Text(
+          (start ? _startTime : _endTime)?.format(context) ?? '$label - CHECK',
+        ),
+      );
+}
+ +
+                                                    s.baseRate.toStringAsFixed(2)
+                                                : s.id == 'half-hall'
+                                                    ? s.name +
+                                                        ' • choose section • \
+                              Align(
+                                alignment: Alignment.centerLeft,
+                                child: Text('Services / Facilities',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .titleMedium
+                                        ?.copyWith(fontWeight: FontWeight.w800)),
+                              ),
+                              const SizedBox(height: 6),
+                              ...settings.services.where((s) => s.active).map(
+                                    (service) {
+                                      final checked =
+                                          _selectedServiceIds.contains(service.id);
+                                      return Padding(
+                                        padding: const EdgeInsets.only(bottom: 6),
+                                        child: Row(
+                                          children: [
+                                            Checkbox(
+                                              value: checked,
+                                              onChanged: (value) => setState(() {
+                                                if (value == true) {
+                                                  _selectedServiceIds.add(service.id);
+                                                  _selectedServiceQuantities[service.id] = 1;
+                                                } else {
+                                                  _selectedServiceIds.remove(service.id);
+                                                  _selectedServiceQuantities.remove(service.id);
+                                                }
+                                              }),
+                                            ),
+                                            Expanded(
+                                              child: Text(
+                                                '${service.name} - \$${service.price.toStringAsFixed(2)}${service.pricingType == 'hourly' ? '/hr' : service.pricingType == 'per_unit' ? '/each' : ''}',
+                                              ),
+                                            ),
+                                            if (checked &&
+                                                (service.pricingType == 'hourly' ||
+                                                    service.pricingType == 'per_unit'))
+                                              SizedBox(
+                                                width: 100,
+                                                child: TextFormField(
+                                                  initialValue:
+                                                      (_selectedServiceQuantities[service.id] ?? 1)
+                                                          .toStringAsFixed(0),
+                                                  keyboardType:
+                                                      const TextInputType.numberWithOptions(
+                                                    decimal: true,
+                                                  ),
+                                                  decoration: InputDecoration(
+                                                    labelText:
+                                                        service.pricingType == 'hourly'
+                                                            ? 'Hours'
+                                                            : 'Qty',
+                                                  ),
+                                                  onChanged: (value) => setState(() {
+                                                    _selectedServiceQuantities[service.id] =
+                                                        double.tryParse(value) ?? 0;
+                                                  }),
+                                                ),
+                                              ),
+                                          ],
+                                        ),
+                                      );
+                                    },
+                                  ),
+                              const SizedBox(height: 10),
+                              TextField(
+                                controller: _notes,
+                                maxLines: 3,
+                                decoration: const InputDecoration(labelText: 'Notes'),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: FilledButton.icon(
+                          onPressed: _saving || _scanBytes == null ? null : _save,
+                          icon: const Icon(Icons.event_available_outlined),
+                          label: const Text('Confirm & Add to Planner'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+    );
+  }
+
+  Widget _field(
+      TextEditingController controller, String label, String? confidenceKey) {
+    return TextField(
+      controller: controller,
+      decoration: InputDecoration(
+        labelText: _labelWithConfidence(label, confidenceKey),
+      ),
+    );
+  }
+
+  String _labelWithConfidence(String label, String? key) {
+    if (key == null) return label;
+    final value = _confidence[key];
+    if (value is num && value < .75) return '$label - CHECK';
+    return label;
+  }
+
+  Widget _dateButton() => OutlinedButton.icon(
+        onPressed: () async {
+          final picked = await showDatePicker(
+            context: context,
+            initialDate: _eventDate ?? DateTime.now(),
+            firstDate: DateTime.now().subtract(const Duration(days: 365)),
+            lastDate: DateTime.now().add(const Duration(days: 3650)),
+          );
+          if (picked != null) setState(() => _eventDate = picked);
+        },
+        icon: const Icon(Icons.calendar_today_outlined),
+        label: Text(_eventDate == null
+            ? 'Event Date - CHECK'
+            : '${_eventDate!.month}/${_eventDate!.day}/${_eventDate!.year}'),
+      );
+
+  Widget _timeButton(String label, bool start) => OutlinedButton.icon(
+        onPressed: () async {
+          final current = start ? _startTime : _endTime;
+          final picked = await showTimePicker(
+            context: context,
+            initialTime: current ?? const TimeOfDay(hour: 18, minute: 0),
+          );
+          if (picked != null) {
+            setState(() {
+              if (start) {
+                _startTime = picked;
+              } else {
+                _endTime = picked;
+              }
+            });
+          }
+        },
+        icon: const Icon(Icons.schedule_outlined),
+        label: Text(
+          (start ? _startTime : _endTime)?.format(context) ?? '$label - CHECK',
+        ),
+      );
+}
+ +
+                                                        s.baseRate.toStringAsFixed(2)
+                                                    : s.name +
+                                                        ' • \
+                              Align(
+                                alignment: Alignment.centerLeft,
+                                child: Text('Services / Facilities',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .titleMedium
+                                        ?.copyWith(fontWeight: FontWeight.w800)),
+                              ),
+                              const SizedBox(height: 6),
+                              ...settings.services.where((s) => s.active).map(
+                                    (service) {
+                                      final checked =
+                                          _selectedServiceIds.contains(service.id);
+                                      return Padding(
+                                        padding: const EdgeInsets.only(bottom: 6),
+                                        child: Row(
+                                          children: [
+                                            Checkbox(
+                                              value: checked,
+                                              onChanged: (value) => setState(() {
+                                                if (value == true) {
+                                                  _selectedServiceIds.add(service.id);
+                                                  _selectedServiceQuantities[service.id] = 1;
+                                                } else {
+                                                  _selectedServiceIds.remove(service.id);
+                                                  _selectedServiceQuantities.remove(service.id);
+                                                }
+                                              }),
+                                            ),
+                                            Expanded(
+                                              child: Text(
+                                                '${service.name} - \$${service.price.toStringAsFixed(2)}${service.pricingType == 'hourly' ? '/hr' : service.pricingType == 'per_unit' ? '/each' : ''}',
+                                              ),
+                                            ),
+                                            if (checked &&
+                                                (service.pricingType == 'hourly' ||
+                                                    service.pricingType == 'per_unit'))
+                                              SizedBox(
+                                                width: 100,
+                                                child: TextFormField(
+                                                  initialValue:
+                                                      (_selectedServiceQuantities[service.id] ?? 1)
+                                                          .toStringAsFixed(0),
+                                                  keyboardType:
+                                                      const TextInputType.numberWithOptions(
+                                                    decimal: true,
+                                                  ),
+                                                  decoration: InputDecoration(
+                                                    labelText:
+                                                        service.pricingType == 'hourly'
+                                                            ? 'Hours'
+                                                            : 'Qty',
+                                                  ),
+                                                  onChanged: (value) => setState(() {
+                                                    _selectedServiceQuantities[service.id] =
+                                                        double.tryParse(value) ?? 0;
+                                                  }),
+                                                ),
+                                              ),
+                                          ],
+                                        ),
+                                      );
+                                    },
+                                  ),
+                              const SizedBox(height: 10),
+                              TextField(
+                                controller: _notes,
+                                maxLines: 3,
+                                decoration: const InputDecoration(labelText: 'Notes'),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: FilledButton.icon(
+                          onPressed: _saving || _scanBytes == null ? null : _save,
+                          icon: const Icon(Icons.event_available_outlined),
+                          label: const Text('Confirm & Add to Planner'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+    );
+  }
+
+  Widget _field(
+      TextEditingController controller, String label, String? confidenceKey) {
+    return TextField(
+      controller: controller,
+      decoration: InputDecoration(
+        labelText: _labelWithConfidence(label, confidenceKey),
+      ),
+    );
+  }
+
+  String _labelWithConfidence(String label, String? key) {
+    if (key == null) return label;
+    final value = _confidence[key];
+    if (value is num && value < .75) return '$label - CHECK';
+    return label;
+  }
+
+  Widget _dateButton() => OutlinedButton.icon(
+        onPressed: () async {
+          final picked = await showDatePicker(
+            context: context,
+            initialDate: _eventDate ?? DateTime.now(),
+            firstDate: DateTime.now().subtract(const Duration(days: 365)),
+            lastDate: DateTime.now().add(const Duration(days: 3650)),
+          );
+          if (picked != null) setState(() => _eventDate = picked);
+        },
+        icon: const Icon(Icons.calendar_today_outlined),
+        label: Text(_eventDate == null
+            ? 'Event Date - CHECK'
+            : '${_eventDate!.month}/${_eventDate!.day}/${_eventDate!.year}'),
+      );
+
+  Widget _timeButton(String label, bool start) => OutlinedButton.icon(
+        onPressed: () async {
+          final current = start ? _startTime : _endTime;
+          final picked = await showTimePicker(
+            context: context,
+            initialTime: current ?? const TimeOfDay(hour: 18, minute: 0),
+          );
+          if (picked != null) {
+            setState(() {
+              if (start) {
+                _startTime = picked;
+              } else {
+                _endTime = picked;
+              }
+            });
+          }
+        },
+        icon: const Icon(Icons.schedule_outlined),
+        label: Text(
+          (start ? _startTime : _endTime)?.format(context) ?? '$label - CHECK',
+        ),
+      );
+}
+ +
+                                                        s.baseRate.toStringAsFixed(2),
+                                          ),
                                         ))
                                     .toList(),
-                                onChanged: (value) => setState(() => _hallId = value),
+                                onChanged: (value) => setState(() {
+                                  _hallId = value;
+                                  _hallSection = null;
+                                }),
                               ),
+                              if (_hallId == 'half-hall') ...[
+                                const SizedBox(height: 12),
+                                DropdownButtonFormField<String>(
+                                  initialValue: _hallSection,
+                                  decoration: InputDecoration(
+                                    labelText: _labelWithConfidence(
+                                      'Half Hall Section',
+                                      'hall_section',
+                                    ),
+                                  ),
+                                  items: const [
+                                    DropdownMenuItem(
+                                      value: WesleyHallSection.southwest,
+                                      child: Text(
+                                        'Southwest Section - Capacity 161',
+                                      ),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: WesleyHallSection.southeast,
+                                      child: Text(
+                                        'Southeast Section - Capacity 117',
+                                      ),
+                                    ),
+                                  ],
+                                  onChanged: (value) =>
+                                      setState(() => _hallSection = value),
+                                ),
+                                const SizedBox(height: 8),
+                                const Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: Text(
+                                    'A Half Hall reservation still blocks the entire Wesley Hall for that time.',
+                                    style: TextStyle(fontSize: 12),
+                                  ),
+                                ),
+                              ],
                               const SizedBox(height: 16),
                               Align(
                                 alignment: Alignment.centerLeft,

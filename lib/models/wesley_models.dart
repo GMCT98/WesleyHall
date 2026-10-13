@@ -91,6 +91,33 @@ class RentalRules {
   final int holdHours;
 }
 
+class WesleyHallSection {
+  static const southwest = 'southwest';
+  static const southeast = 'southeast';
+
+  static String? label(String? value) {
+    switch (value) {
+      case southwest:
+        return 'Southwest Section';
+      case southeast:
+        return 'Southeast Section';
+      default:
+        return null;
+    }
+  }
+
+  static int? capacity(String? value) {
+    switch (value) {
+      case southwest:
+        return 161;
+      case southeast:
+        return 117;
+      default:
+        return null;
+    }
+  }
+}
+
 class HallSpace {
   const HallSpace({
     required this.id,
@@ -233,6 +260,7 @@ class Booking {
     required this.guestCount,
     required this.hallSpaceId,
     required this.hallSpaceName,
+    this.hallSection,
     required this.hallCharge,
     required this.extraTimeCharge,
     required this.status,
@@ -268,6 +296,7 @@ class Booking {
   final int guestCount;
   final String hallSpaceId;
   final String hallSpaceName;
+  final String? hallSection;
   final double hallCharge;
   final double extraTimeCharge;
   final String status;
@@ -289,6 +318,11 @@ class Booking {
 
   bool get isChurchUse => reservationType == 'church_use';
   bool get isHold => status == 'hold';
+  String get hallDisplayName {
+    final sectionLabel = WesleyHallSection.label(hallSection);
+    return sectionLabel == null ? hallSpaceName : '$hallSpaceName - $sectionLabel';
+  }
+  int? get hallSectionCapacity => WesleyHallSection.capacity(hallSection);
   bool get isExpiredHold =>
       isHold && holdExpiresAt != null && holdExpiresAt!.isBefore(DateTime.now());
   bool get isRecurring => seriesKey != null && seriesKey!.isNotEmpty;
@@ -338,6 +372,7 @@ class Booking {
     String? clientSignaturePath,
     DateTime? clientSignedAt,
     DateTime? holdExpiresAt,
+    String? hallSection,
     DamageInspection? inspection,
     String? seriesKey,
     String? seriesRule,
@@ -360,6 +395,7 @@ class Booking {
       guestCount: guestCount,
       hallSpaceId: hallSpaceId,
       hallSpaceName: hallSpaceName,
+      hallSection: hallSection ?? this.hallSection,
       hallCharge: hallCharge,
       extraTimeCharge: extraTimeCharge,
       status: status ?? this.status,

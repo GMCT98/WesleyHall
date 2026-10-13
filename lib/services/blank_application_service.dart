@@ -115,7 +115,7 @@ class BlankApplicationService {
                 (service) => _checkLine(
                   service.name,
                   service.price > 0
-                      ? '\${service.price.toStringAsFixed(2)}${service.pricingType == 'hourly' ? ' / hr' : service.pricingType == 'per_unit' ? ' / each' : ''}'
+                      ? '\$${service.price.toStringAsFixed(2)}${service.pricingType == 'hourly' ? ' / hr' : service.pricingType == 'per_unit' ? ' / each' : ''}'
                       : 'Rate to be confirmed',
                   trailingBlank: service.pricingType == 'hourly'
                       ? 'Hours: ________'

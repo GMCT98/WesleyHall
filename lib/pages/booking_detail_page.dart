@@ -477,7 +477,7 @@ class _BookingDetailPageState extends State<BookingDetailPage> {
                       runSpacing: 10,
                       crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
-                        Text('${b.eventDetails} • ${b.hallSpaceName}',
+                        Text('${b.eventDetails} • ${b.hallDisplayName}',
                             style: Theme.of(context).textTheme.titleLarge),
                         Chip(
                             label: Text(b.status

@@ -31,6 +31,7 @@ class _DuplicateBookingPageState extends State<DuplicateBookingPage> {
 
   SettingsBundle? _settings;
   String? _hallId;
+  String? _hallSection;
   late DateTime _eventDate;
   late TimeOfDay _start;
   late TimeOfDay _end;
@@ -109,6 +110,8 @@ class _DuplicateBookingPageState extends State<DuplicateBookingPage> {
       setState(() {
         _settings = settings;
         _hallId = hall.id;
+        _hallSection =
+            hall.id == 'half-hall' ? widget.source.hallSection : null;
       });
       await _checkAvailability();
     } catch (e) {
@@ -179,6 +182,52 @@ class _DuplicateBookingPageState extends State<DuplicateBookingPage> {
   double get _total =>
       _isChurchUse ? 0 : _hallValue + _servicesTotal + _extraTimeCharge;
 
+  int? get _selectedCapacity {
+    if (_hallId == 'full-hall') return 278;
+    if (_hallId == 'half-hall') {
+      return WesleyHallSection.capacity(_hallSection);
+    }
+    final settings = _settings;
+    if (settings == null || _hallId == null) return null;
+    for (final space in settings.spaces) {
+      if (space.id == _hallId) return space.capacity;
+    }
+    return null;
+  }
+
+  bool _validateHallSectionAndCapacity() {
+    if (_hallId == 'half-hall' && _hallSection == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Please choose Southwest Section or Southeast Section for the Half Hall.',
+          ),
+        ),
+      );
+      return false;
+    }
+
+    final count = int.tryParse(_guests.text.trim()) ?? 0;
+    final capacity = _selectedCapacity;
+    if (capacity != null && count > capacity) {
+      final hallLabel = _hallId == 'half-hall'
+          ? WesleyHallSection.label(_hallSection) ?? 'Half Hall'
+          : 'Full Hall';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            hallLabel +
+                ' capacity is ' +
+                capacity.toString() +
+                '. Please reduce the guest count or choose the Full Hall.',
+          ),
+        ),
+      );
+      return false;
+    }
+    return true;
+  }
+
   Future<void> _checkAvailability() async {
     if (_settings == null || _hallId == null) return;
     try {
@@ -224,6 +273,7 @@ class _DuplicateBookingPageState extends State<DuplicateBookingPage> {
     if (settings == null || _hallId == null || !_formKey.currentState!.validate()) {
       return;
     }
+    if (!_validateHallSectionAndCapacity()) return;
 
     setState(() => _saving = true);
     try {
@@ -276,6 +326,7 @@ class _DuplicateBookingPageState extends State<DuplicateBookingPage> {
         guestCount: int.tryParse(_guests.text.trim()) ?? 0,
         hallSpaceId: hall.id,
         hallSpaceName: hall.name,
+        hallSection: hall.id == 'half-hall' ? _hallSection : null,
         hallCharge: _isChurchUse ? 0 : _hallValue,
         extraTimeCharge: _isChurchUse ? 0 : _extraTimeCharge,
         status: _isChurchUse ? 'reserved' : 'awaiting_deposit',
@@ -452,7 +503,17 @@ class _DuplicateBookingPageState extends State<DuplicateBookingPage> {
                                       .map(
                                         (space) => DropdownMenuItem(
                                           value: space.id,
-                                          child: Text(space.name),
+                                          child: Text(
+                                            space.id == 'full-hall'
+                                                ? space.name + ' - Capacity 278'
+                                                : space.id == 'half-hall'
+                                                    ? space.name + ' - choose section'
+                                                    : space.capacity == null
+                                                        ? space.name
+                                                        : space.name +
+                                                            ' - Capacity ' +
+                                                            space.capacity.toString(),
+                                          ),
                                         ),
                                       )
                                       .toList(),
@@ -461,6 +522,7 @@ class _DuplicateBookingPageState extends State<DuplicateBookingPage> {
                                     final hall = spaces.firstWhere((e) => e.id == value);
                                     setState(() {
                                       _hallId = value;
+                                      _hallSection = null;
                                       _hallCharge.text = _isChurchUse
                                           ? '0.00'
                                           : hall.baseRate.toStringAsFixed(2);
@@ -469,8 +531,48 @@ class _DuplicateBookingPageState extends State<DuplicateBookingPage> {
                                   },
                                 ),
                               ),
+                              if (_hallId == 'half-hall')
+                                SizedBox(
+                                  width: 310,
+                                  child: DropdownButtonFormField<String>(
+                                    initialValue: _hallSection,
+                                    decoration: const InputDecoration(
+                                      labelText: 'Half Hall Section',
+                                    ),
+                                    items: const [
+                                      DropdownMenuItem(
+                                        value: WesleyHallSection.southwest,
+                                        child: Text(
+                                          'Southwest Section - Capacity 161',
+                                        ),
+                                      ),
+                                      DropdownMenuItem(
+                                        value: WesleyHallSection.southeast,
+                                        child: Text(
+                                          'Southeast Section - Capacity 117',
+                                        ),
+                                      ),
+                                    ],
+                                    onChanged: (value) =>
+                                        setState(() => _hallSection = value),
+                                  ),
+                                ),
                             ],
                           ),
+                          if (_hallId == 'half-hall') ...[
+                            const SizedBox(height: 10),
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFEAF3FF),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: const Text(
+                                'Only one renter may use Wesley Hall at a time. A Half Hall reservation still blocks the entire hall.',
+                                style: TextStyle(fontSize: 12),
+                              ),
+                            ),
+                          ],
                           const SizedBox(height: 12),
                           Container(
                             padding: const EdgeInsets.all(12),

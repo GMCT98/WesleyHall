@@ -214,7 +214,7 @@ class _CommunicationsPageState extends State<CommunicationsPage> {
                 overflow: TextOverflow.ellipsis,
               ),
               const SizedBox(height: 8),
-              Text('${_date(booking.eventDate)} • ${booking.hallSpaceName}'),
+              Text('${_date(booking.eventDate)} • ${booking.hallDisplayName}'),
               Text(
                 hasEmail ? booking.email : 'EMAIL ADDRESS NEEDED',
                 style: TextStyle(

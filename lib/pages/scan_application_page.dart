@@ -40,6 +40,7 @@ class _ScanApplicationPageState extends State<ScanApplicationPage> {
   TimeOfDay? _endTime;
   String? _hallId;
   final Set<String> _selectedServiceIds = {};
+  final Map<String, double> _selectedServiceQuantities = {};
   Map<String, dynamic> _confidence = const {};
 
   @override
@@ -130,10 +131,12 @@ class _ScanApplicationPageState extends State<ScanApplicationPage> {
       if (hall != null) _hallId = hall.id;
 
       _selectedServiceIds.clear();
+      _selectedServiceQuantities.clear();
       for (final serviceName in extracted.selectedServices) {
         for (final service in settings.services.where((s) => s.active)) {
           if (service.name.trim().toLowerCase() == serviceName.trim().toLowerCase()) {
             _selectedServiceIds.add(service.id);
+            _selectedServiceQuantities[service.id] = 1;
           }
         }
       }
@@ -214,12 +217,11 @@ class _ScanApplicationPageState extends State<ScanApplicationPage> {
           .map((s) => BookingExtra(
                 serviceId: s.id,
                 name: s.name,
-                quantity: 1,
+                quantity: _selectedServiceQuantities[s.id] ?? 1,
                 unitPrice: s.price,
               ))
           .toList();
 
-      final extraTotal = extras.fold<double>(0, (sum, e) => sum + e.total);
       final eventMinutes = end.difference(start).inMinutes;
       final extraMinutes = eventMinutes - settings.rules.standardRentalHours * 60;
       final extraTimeCharge = settings.rules.extraHourRate > 0 && extraMinutes > 0
@@ -418,21 +420,59 @@ class _ScanApplicationPageState extends State<ScanApplicationPage> {
                               ),
                               const SizedBox(height: 6),
                               ...settings.services.where((s) => s.active).map(
-                                    (service) => CheckboxListTile(
-                                      dense: true,
-                                      contentPadding: EdgeInsets.zero,
-                                      value: _selectedServiceIds.contains(service.id),
-                                      title: Text(
-                                        '${service.name} - \$${service.price.toStringAsFixed(2)}${service.pricingType == 'hourly' ? '/hr' : ''}',
-                                      ),
-                                      onChanged: (checked) => setState(() {
-                                        if (checked == true) {
-                                          _selectedServiceIds.add(service.id);
-                                        } else {
-                                          _selectedServiceIds.remove(service.id);
-                                        }
-                                      }),
-                                    ),
+                                    (service) {
+                                      final checked =
+                                          _selectedServiceIds.contains(service.id);
+                                      return Padding(
+                                        padding: const EdgeInsets.only(bottom: 6),
+                                        child: Row(
+                                          children: [
+                                            Checkbox(
+                                              value: checked,
+                                              onChanged: (value) => setState(() {
+                                                if (value == true) {
+                                                  _selectedServiceIds.add(service.id);
+                                                  _selectedServiceQuantities[service.id] = 1;
+                                                } else {
+                                                  _selectedServiceIds.remove(service.id);
+                                                  _selectedServiceQuantities.remove(service.id);
+                                                }
+                                              }),
+                                            ),
+                                            Expanded(
+                                              child: Text(
+                                                '${service.name} - \${service.price.toStringAsFixed(2)}${service.pricingType == 'hourly' ? '/hr' : service.pricingType == 'per_unit' ? '/each' : ''}',
+                                              ),
+                                            ),
+                                            if (checked &&
+                                                (service.pricingType == 'hourly' ||
+                                                    service.pricingType == 'per_unit'))
+                                              SizedBox(
+                                                width: 100,
+                                                child: TextFormField(
+                                                  initialValue:
+                                                      (_selectedServiceQuantities[service.id] ?? 1)
+                                                          .toStringAsFixed(0),
+                                                  keyboardType:
+                                                      const TextInputType.numberWithOptions(
+                                                    decimal: true,
+                                                  ),
+                                                  decoration: InputDecoration(
+                                                    labelText:
+                                                        service.pricingType == 'hourly'
+                                                            ? 'Hours'
+                                                            : 'Qty',
+                                                  ),
+                                                  onChanged: (value) => setState(() {
+                                                    _selectedServiceQuantities[service.id] =
+                                                        double.tryParse(value) ?? 0;
+                                                  }),
+                                                ),
+                                              ),
+                                          ],
+                                        ),
+                                      );
+                                    },
                                   ),
                               const SizedBox(height: 10),
                               TextField(

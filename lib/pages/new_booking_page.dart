@@ -32,6 +32,7 @@ class _NewBookingPageState extends State<NewBookingPage> {
 
   SettingsBundle? settings;
   String? hallId;
+  String? hallSection;
   String reservationType = 'external_rental';
   String recurrence = 'none';
   int recurrenceCount = 4;
@@ -157,6 +158,51 @@ class _NewBookingPageState extends State<NewBookingPage> {
 
   double get total => isChurchUse ? 0.0 : hallValue + extrasTotal + extraTime;
 
+  int? get selectedCapacity {
+    if (hallId == 'full-hall') return 278;
+    if (hallId == 'half-hall') {
+      return WesleyHallSection.capacity(hallSection);
+    }
+    if (settings == null || hallId == null) return null;
+    for (final space in settings!.spaces) {
+      if (space.id == hallId) return space.capacity;
+    }
+    return null;
+  }
+
+  bool _validateHallSectionAndCapacity() {
+    if (hallId == 'half-hall' && hallSection == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Please choose Southwest Section or Southeast Section for the Half Hall.',
+          ),
+        ),
+      );
+      return false;
+    }
+
+    final count = int.tryParse(guests.text.trim()) ?? 0;
+    final capacity = selectedCapacity;
+    if (capacity != null && count > capacity) {
+      final hallLabel = hallId == 'half-hall'
+          ? WesleyHallSection.label(hallSection) ?? 'Half Hall'
+          : 'Full Hall';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            hallLabel +
+                ' capacity is ' +
+                capacity.toString() +
+                '. Please reduce the guest count or choose the Full Hall.',
+          ),
+        ),
+      );
+      return false;
+    }
+    return true;
+  }
+
   Future<void> checkAvailability() async {
     if (settings == null || hallId == null) return;
     final conflict = await widget.repository.hasBookingConflict(
@@ -213,6 +259,7 @@ class _NewBookingPageState extends State<NewBookingPage> {
     }
 
     if (asHold && isChurchUse) return;
+    if (!_validateHallSectionAndCapacity()) return;
 
     final dates = _occurrenceDates();
     setState(() => saving = true);
@@ -279,6 +326,7 @@ class _NewBookingPageState extends State<NewBookingPage> {
           guestCount: int.tryParse(guests.text.trim()) ?? 0,
           hallSpaceId: hall.id,
           hallSpaceName: hall.name,
+          hallSection: hall.id == 'half-hall' ? hallSection : null,
           hallCharge: isChurchUse ? 0.0 : hallValue,
           extraTimeCharge: isChurchUse ? 0.0 : extraTime,
           status: isChurchUse
@@ -438,7 +486,17 @@ class _NewBookingPageState extends State<NewBookingPage> {
                                   items: spaces
                                       .map((e) => DropdownMenuItem(
                                             value: e.id,
-                                            child: Text(e.name),
+                                            child: Text(
+                                              e.id == 'full-hall'
+                                                  ? e.name + ' - Capacity 278'
+                                                  : e.id == 'half-hall'
+                                                      ? e.name + ' - choose section'
+                                                      : e.capacity == null
+                                                          ? e.name
+                                                          : e.name +
+                                                              ' - Capacity ' +
+                                                              e.capacity.toString(),
+                                            ),
                                           ))
                                       .toList(),
                                   onChanged: (value) {
@@ -447,6 +505,7 @@ class _NewBookingPageState extends State<NewBookingPage> {
                                         .firstWhere((e) => e.id == value);
                                     setState(() {
                                       hallId = value;
+                                      hallSection = null;
                                       hallCharge.text = isChurchUse
                                           ? '0.00'
                                           : hall.baseRate.toStringAsFixed(2);
@@ -456,6 +515,51 @@ class _NewBookingPageState extends State<NewBookingPage> {
                                 ),
                               ),
                             ]),
+                            if (hallId == 'half-hall') ...[
+                              const SizedBox(height: 12),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: DropdownButtonFormField<String>(
+                                      initialValue: hallSection,
+                                      decoration: const InputDecoration(
+                                        labelText: 'Half Hall Section',
+                                      ),
+                                      items: const [
+                                        DropdownMenuItem(
+                                          value: WesleyHallSection.southwest,
+                                          child: Text(
+                                            'Southwest Section - Capacity 161',
+                                          ),
+                                        ),
+                                        DropdownMenuItem(
+                                          value: WesleyHallSection.southeast,
+                                          child: Text(
+                                            'Southeast Section - Capacity 117',
+                                          ),
+                                        ),
+                                      ],
+                                      onChanged: (value) =>
+                                          setState(() => hallSection = value),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Container(
+                                      padding: const EdgeInsets.all(12),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFEAF3FF),
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      child: const Text(
+                                        'Only one renter may use Wesley Hall at a time. Selecting a half still blocks the entire hall.',
+                                        style: TextStyle(fontSize: 12),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
                             const SizedBox(height: 12),
                             Row(children: [
                               Expanded(child: _timeButton('Start', start,

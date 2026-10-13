@@ -85,6 +85,12 @@ Deno.serve(async (req) => {
           description: '24-hour HH:MM if confidently readable, otherwise empty string',
         },
         hall_space_name: { type: 'string' },
+        hall_section: {
+          type: 'string',
+          enum: ['', 'southwest', 'southeast'],
+          description:
+            'For Half Hall only: southwest or southeast when visibly selected; otherwise empty string',
+        },
         selected_services: {
           type: 'array',
           items: { type: 'string' },
@@ -99,6 +105,7 @@ Deno.serve(async (req) => {
             start_time: { type: 'number' },
             end_time: { type: 'number' },
             hall_space_name: { type: 'number' },
+            hall_section: { type: 'number' },
             selected_services: { type: 'number' },
           },
           required: [
@@ -107,6 +114,7 @@ Deno.serve(async (req) => {
             'start_time',
             'end_time',
             'hall_space_name',
+            'hall_section',
             'selected_services',
           ],
         },
@@ -122,6 +130,7 @@ Deno.serve(async (req) => {
         'start_time',
         'end_time',
         'hall_space_name',
+        'hall_section',
         'selected_services',
         'notes',
         'confidence',
@@ -132,6 +141,7 @@ Deno.serve(async (req) => {
 Read typed text, handwriting, dates, times, hall selections, and checked service boxes carefully.
 Never invent a value. Use an empty string or null when uncertain.
 Normalize event_date to YYYY-MM-DD and times to 24-hour HH:MM only when clearly supported by the form.
+For a Half Hall application, hall_section must be "southwest" or "southeast" only when that printed section is visibly checked or marked; otherwise return an empty string.
 For selected_services, return the printed service names whose boxes are visibly checked or marked.
 Confidence values must be from 0 to 1.
 This extraction is only a draft: staff will review all fields before the reservation is saved.`;
